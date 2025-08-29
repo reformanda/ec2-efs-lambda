@@ -1,0 +1,26 @@
+# inventory.yml - Ansible Inventory
+# Update this file after running Terraform to get the actual EC2 IP address
+
+all:
+  children:
+    rhel_servers:
+      hosts:
+        rhel-efs-server:
+          ansible_host: "{{ ec2_public_ip }}"  # Will be populated by Terraform output
+          ansible_user: ec2-user
+          ansible_ssh_private_key_file: /path/to/your-key.pem
+          ansible_ssh_common_args: '-o StrictHostKeyChecking=no'
+          
+          # Variables passed from Terraform
+          efs_file_system_id: "{{ efs_file_system_id }}"
+          aws_region: "{{ aws_region }}"
+          s3_bucket_name: "{{ s3_bucket_name }}"
+
+      vars:
+        ansible_python_interpreter: /usr/bin/python3
+        
+# Example of how to populate this dynamically:
+# You can use terraform output to get these values:
+# terraform output -json > terraform_outputs.json
+# 
+# Then use a script or ansible-inventory plugin to populate these values

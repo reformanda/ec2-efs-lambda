@@ -1,0 +1,291 @@
+---
+# configure-ec2.yml - Ansible Playbook for RHEL 9 EC2 EFS Configuration
+- name: Configure RHEL 9 EC2 instance with EFS mount
+  hosts: rhel_servers
+  become: yes
+  vars:
+    efs_id: "{{ hostvars[inventory_hostname]['efs_file_system_id'] }}"
+    aws_region: "{{ hostvars[inventory_hostname]['aws_region'] | default('us-east-2') }}"
+    s3_bucket: "{{ hostvars[inventory_hostname]['s3_bucket_name'] }}"
+    mount_point: "/mnt/efs"
+    
+  tasks:
+    - name: Update system packages
+      dnf:
+        name: "*"
+        state: latest
+        update_cache: yes
+
+    - name: Install required packages
+      dnf:
+        name:
+          - nfs-utils
+          - git
+          - gcc
+          - make
+          - rpm-build
+          - rpm-devel
+          - libtool
+          - systemd-devel
+          - openssl-devel
+          - cargo
+          - rust
+          - python3
+          - python3-pip
+          - aws-cli
+          - htop
+          - tree
+          - wget
+          - curl
+          - vim
+          - tmux
+        state: present
+
+    - name: Check if amazon-efs-utils is already installed
+      command: rpm -q amazon-efs-utils
+      register: efs_utils_installed
+      failed_when: false
+      changed_when: false
+
+    - name: Build and install amazon-efs-utils from source
+      block:
+        - name: Clone efs-utils repository
+          git:
+            repo: https://github.com/aws/efs-utils
+            dest: /tmp/efs-utils
+            force: yes
+
+        - name: Build RPM package
+          command: make rpm
+          args:
+            chdir: /tmp/efs-utils
+
+        - name: Install amazon-efs-utils RPM
+          shell: rpm -ivh /tmp/efs-utils/build/amazon-efs-utils*.rpm
+          args:
+            creates: /usr/bin/amazon-efs-mount-watchdog
+
+        - name: Clean up build directory
+          file:
+            path: /tmp/efs-utils
+            state: absent
+      when: efs_utils_installed.rc != 0
+
+    - name: Create EFS mount point
+      file:
+        path: "{{ mount_point }}"
+        state: directory
+        mode: '0755'
+        owner: ec2-user
+        group: ec2-user
+
+    - name: Create EFS data directories
+      file:
+        path: "{{ mount_point }}/{{ item }}"
+        state: directory
+        mode: '0755'
+        owner: ec2-user
+        group: ec2-user
+      loop:
+        - data
+        - logs
+        - scripts
+        - backups
+
+    - name: Configure EFS mount in fstab
+      mount:
+        path: "{{ mount_point }}"
+        src: "{{ efs_id }}.efs.{{ aws_region }}.amazonaws.com:/"
+        fstype: efs
+        opts: "defaults,_netdev,tls"
+        state: mounted
+
+    - name: Create EFS monitoring script
+      copy:
+        dest: /home/ec2-user/monitor-efs.sh
+        mode: '0755'
+        owner: ec2-user
+        group: ec2-user
+        content: |
+          #!/bin/bash
+          # EFS Monitoring Script
+          
+          echo "=== EFS Mount Status ($(date)) ==="
+          if mountpoint -q {{ mount_point }}; then
+              echo "✓ EFS is mounted at {{ mount_point }}"
+              echo "✓ Mount details:"
+              mount | grep efs
+          else
+              echo "✗ EFS is NOT mounted"
+          fi
+          
+          echo -e "\n=== EFS Disk Usage ==="
+          df -h {{ mount_point }} 2>/dev/null || echo "EFS not available"
+          
+          echo -e "\n=== EFS Directory Structure ==="
+          tree -L 2 {{ mount_point }} 2>/dev/null || ls -la {{ mount_point }}/
+          
+          echo -e "\n=== Recent EFS Activity (last 24 hours) ==="
+          find {{ mount_point }} -type f -mtime -1 2>/dev/null | head -10 || echo "No recent files found"
+          
+          echo -e "\n=== EFS Connection Test ==="
+          test_file="{{ mount_point }}/logs/connectivity-test-$(date +%s).txt"
+          echo "Test write at $(date)" > "$test_file" && echo "✓ Write test successful" || echo "✗ Write test failed"
+
+    - name: Create S3-EFS sync script
+      copy:
+        dest: /home/ec2-user/sync-s3-efs.sh
+        mode: '0755'
+        owner: ec2-user
+        group: ec2-user
+        content: |
+          #!/bin/bash
+          # S3-EFS Sync Script
+          
+          S3_BUCKET="{{ s3_bucket }}"
+          EFS_PATH="{{ mount_point }}/data"
+          LOG_FILE="{{ mount_point }}/logs/sync-$(date +%Y%m%d).log"
+          
+          echo "=== S3-EFS Sync Started at $(date) ===" | tee -a "$LOG_FILE"
+          
+          # Ensure AWS CLI is configured
+          if ! aws sts get-caller-identity &>/dev/null; then
+              echo "ERROR: AWS CLI not configured or no permissions" | tee -a "$LOG_FILE"
+              exit 1
+          fi
+          
+          # Sync from S3 to EFS
+          echo "Syncing from S3 to EFS..." | tee -a "$LOG_FILE"
+          aws s3 sync "s3://${S3_BUCKET}" "$EFS_PATH" --delete 2>&1 | tee -a "$LOG_FILE"
+          
+          # Optionally sync from EFS to S3 (uncomment if needed)
+          # echo "Syncing from EFS to S3..." | tee -a "$LOG_FILE"
+          # aws s3 sync "$EFS_PATH" "s3://${S3_BUCKET}" --delete 2>&1 | tee -a "$LOG_FILE"
+          
+          echo "=== S3-EFS Sync Completed at $(date) ===" | tee -a "$LOG_FILE"
+
+    - name: Install Python packages for data processing
+      pip:
+        name:
+          - boto3
+          - pandas
+          - numpy
+          - requests
+        executable: pip3
+        extra_args: --user
+      become_user: ec2-user
+
+    - name: Create systemd service for EFS mount
+      copy:
+        dest: /etc/systemd/system/efs-mount.service
+        content: |
+          [Unit]
+          Description=EFS Mount Service
+          After=network-online.target
+          Wants=network-online.target
+          
+          [Service]
+          Type=oneshot
+          RemainAfterExit=yes
+          ExecStartPre=/bin/sleep 10
+          ExecStart=/bin/mount -t efs -o tls {{ efs_id }}:/ {{ mount_point }}
+          ExecStop=/bin/umount {{ mount_point }}
+          TimeoutStartSec=30
+          TimeoutStopSec=30
+          
+          [Install]
+          WantedBy=multi-user.target
+
+    - name: Enable and start EFS mount service
+      systemd:
+        name: efs-mount.service
+        enabled: yes
+        daemon_reload: yes
+
+    - name: Create cron job for periodic S3 sync
+      cron:
+        name: "S3-EFS Sync"
+        minute: "0"
+        hour: "*/2"
+        job: "/home/ec2-user/sync-s3-efs.sh"
+        user: ec2-user
+
+    - name: Create logrotate configuration for EFS logs
+      copy:
+        dest: /etc/logrotate.d/efs-logs
+        content: |
+          {{ mount_point }}/logs/*.log {
+              daily
+              rotate 30
+              compress
+              delaycompress
+              missingok
+              notifempty
+              copytruncate
+          }
+
+    - name: Set up bash aliases for EFS management
+      lineinfile:
+        path: /home/ec2-user/.bashrc
+        line: "{{ item }}"
+        create: yes
+      loop:
+        - "alias efs-status='~/monitor-efs.sh'"
+        - "alias efs-sync='~/sync-s3-efs.sh'"
+        - "alias efs-logs='tail -f {{ mount_point }}/logs/*.log'"
+        - "alias efs-space='df -h {{ mount_point }}'"
+      become_user: ec2-user
+
+    - name: Create welcome message with EFS information
+      copy:
+        dest: /etc/motd
+        content: |
+          
+          ==========================================
+          RHEL 9 EC2 Instance with EFS Mount
+          ==========================================
+          
+          EFS Mount Point: {{ mount_point }}
+          S3 Bucket: {{ s3_bucket }}
+          AWS Region: {{ aws_region }}
+          
+          Quick Commands:
+          - efs-status    : Check EFS mount status
+          - efs-sync      : Sync with S3 bucket
+          - efs-logs      : View sync logs
+          - efs-space     : Check EFS disk usage
+          
+          EFS Directories:
+          - {{ mount_point }}/data     : Main data directory
+          - {{ mount_point }}/logs     : Log files
+          - {{ mount_point }}/scripts  : Custom scripts
+          - {{ mount_point }}/backups  : Backup files
+          
+          ==========================================
+          
+
+    - name: Verify EFS mount is working
+      command: mountpoint -q {{ mount_point }}
+      register: mount_check
+      failed_when: mount_check.rc != 0
+
+    - name: Create test file to verify EFS functionality
+      copy:
+        dest: "{{ mount_point }}/logs/ansible-setup-complete.txt"
+        content: |
+          EFS setup completed successfully by Ansible
+          Timestamp: {{ ansible_date_time.iso8601 }}
+          Host: {{ inventory_hostname }}
+        owner: ec2-user
+        group: ec2-user
+
+    - name: Display setup completion message
+      debug:
+        msg: |
+          EFS setup completed successfully!
+          - EFS mounted at {{ mount_point }}
+          - Monitoring script: /home/ec2-user/monitor-efs.sh
+          - Sync script: /home/ec2-user/sync-s3-efs.sh
+          - Logs directory: {{ mount_point }}/logs
+          
+          Run 'efs-status' to check current status
