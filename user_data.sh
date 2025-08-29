@@ -88,7 +88,7 @@ cat > /home/ec2-user/sync-s3-efs.sh << 'EOF'
 #!/bin/bash
 # Simple script to sync S3 bucket with EFS
 
-S3_BUCKET="__S3_BUCKET__"
+S3_BUCKET="${s3_bucket}"
 EFS_PATH="/mnt/efs/data"
 
 echo "Starting S3 to EFS sync at $(date)"
