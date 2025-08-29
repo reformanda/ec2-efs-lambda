@@ -401,11 +401,11 @@ resource "aws_instance" "rhel9" {
   subnet_id             = var.subnet_ids[0]
   iam_instance_profile  = aws_iam_instance_profile.ec2_profile.name
 
-  user_data = templatefile("${path.module}/user_data.sh", {
-    efs_id = aws_efs_file_system.main.id
+  user_data = base64encode(templatefile("${path.module}/user_data.sh", {
+    efs_id     = aws_efs_file_system.main.id
     aws_region = var.aws_region
-    s3_bucket = aws_s3_bucket.data_bucket.bucket
-  })
+    s3_bucket  = aws_s3_bucket.data_bucket.bucket
+  }))
 
   tags = merge(var.common_tags, {
     Name = "${var.project_name}-rhel9-instance"
