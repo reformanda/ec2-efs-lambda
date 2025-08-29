@@ -54,10 +54,10 @@ echo "amazon-efs-utils installed successfully"
 mkdir -p /mnt/efs
 
 # Create fstab entry for EFS (using TLS encryption)
-echo "${EFS_ID}.efs.${AWS_REGION}.amazonaws.com:/ /mnt/efs efs defaults,_netdev,tls" >> /etc/fstab
+echo "${efs_id}.efs.${aws_region}.amazonaws.com:/ /mnt/efs efs defaults,_netdev,tls" >> /etc/fstab
 
 # Mount EFS with TLS encryption
-mount -t efs -o tls ${EFS_ID}:/ /mnt/efs
+mount -t efs -o tls ${efs_id}:/ /mnt/efs
 
 # Verify mount
 if mountpoint -q /mnt/efs; then
@@ -100,7 +100,7 @@ echo "Sync completed at $(date)"
 EOF
 
 # Replace placeholder with actual bucket name
-sed -i "s/__S3_BUCKET__/${S3_BUCKET}/g" /home/ec2-user/sync-s3-efs.sh
+sed -i "s/__S3_BUCKET__/${s3_bucket}/g" /home/ec2-user/sync-s3-efs.sh
 
 # Make script executable
 chmod +x /home/ec2-user/sync-s3-efs.sh
@@ -115,7 +115,7 @@ After=network.target
 [Service]
 Type=oneshot
 RemainAfterExit=yes
-ExecStart=/bin/mount -t efs -o tls ${EFS_ID}:/ /mnt/efs
+ExecStart=/bin/mount -t efs -o tls ${efs_id}:/ /mnt/efs
 ExecStop=/bin/umount /mnt/efs
 User=root
 Group=root
@@ -276,7 +276,7 @@ else
     echo "✗ EFS Mount: FAILED"
     # Try to remount
     echo "Attempting to remount EFS..."
-    mount -t efs -o tls ${EFS_ID}:/ /mnt/efs
+    mount -t efs -o tls ${efs_id}:/ /mnt/efs
 fi
 
 # Check EFS connectivity
