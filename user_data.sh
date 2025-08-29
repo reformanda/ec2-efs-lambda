@@ -54,10 +54,10 @@ echo "amazon-efs-utils installed successfully"
 mkdir -p /mnt/efs
 
 # Create fstab entry for EFS (using TLS encryption)
-echo "${efs_id}.efs.${aws_region}.amazonaws.com:/ /mnt/efs efs defaults,_netdev,tls" >> /etc/fstab
+echo "$EFS_ID.efs.$AWS_REGION.amazonaws.com:/ /mnt/efs efs defaults,_netdev,tls" >> /etc/fstab
 
 # Mount EFS with TLS encryption
-mount -t efs -o tls ${efs_id}:/ /mnt/efs
+mount -t efs -o tls $EFS_ID:/ /mnt/efs
 
 # Verify mount
 if mountpoint -q /mnt/efs; then
@@ -83,30 +83,9 @@ echo "EFS mount successful at $(date)" > /mnt/efs/logs/mount-test.log
 # Install additional Python packages for data processing
 pip3 install --user boto3 pandas numpy
 
-# Create a simple sync script for manual S3-EFS sync
-cat > /home/ec2-user/sync-s3-efs.sh << 'EOF'
-#!/bin/bash
-# Simple script to sync S3 bucket with EFS
 
-S3_BUCKET="${s3_bucket}"
-EFS_PATH="/mnt/efs/data"
 
-echo "Starting S3 to EFS sync at $(date)"
-
-# Sync from S3 to EFS
-aws s3 sync s3://${S3_BUCKET} ${EFS_PATH}
-
-echo "Sync completed at $(date)"
-EOF
-
-# Replace placeholder with actual bucket name
-sed -i "s/__S3_BUCKET__/${s3_bucket}/g" /home/ec2-user/sync-s3-efs.sh
-
-# Make script executable
-chmod +x /home/ec2-user/sync-s3-efs.sh
-chown ec2-user:ec2-user /home/ec2-user/sync-s3-efs.sh
-
-# Update systemd service to use TLS
+# Create systemd service to use TLS
 cat > /etc/systemd/system/efs-mount.service << EOF
 [Unit]
 Description=EFS Mount Service
@@ -115,7 +94,7 @@ After=network.target
 [Service]
 Type=oneshot
 RemainAfterExit=yes
-ExecStart=/bin/mount -t efs -o tls ${efs_id}:/ /mnt/efs
+ExecStart=/bin/mount -t efs -o tls $EFS_ID:/ /mnt/efs
 ExecStop=/bin/umount /mnt/efs
 User=root
 Group=root
@@ -263,11 +242,11 @@ systemctl enable efs-status-web.service
 systemctl start efs-status-web.service
 
 # Create a simple health check script
-cat > /home/ec2-user/health-check.sh << 'EOF'
+cat > /home/ec2-user/health-check.sh << EOF
 #!/bin/bash
 # Health check script for EFS and services
 
-echo "=== System Health Check ($(date)) ==="
+echo "=== System Health Check (\$(date)) ==="
 
 # Check EFS mount
 if mountpoint -q /mnt/efs; then
@@ -276,13 +255,13 @@ else
     echo "✗ EFS Mount: FAILED"
     # Try to remount
     echo "Attempting to remount EFS..."
-    mount -t efs -o tls ${efs_id}:/ /mnt/efs
+    mount -t efs -o tls $EFS_ID:/ /mnt/efs
 fi
 
 # Check EFS connectivity
 if [ -w /mnt/efs ]; then
     echo "✓ EFS Write Access: OK"
-    echo "Health check at $(date)" > /mnt/efs/logs/health-check.log
+    echo "Health check at \$(date)" > /mnt/efs/logs/health-check.log
 else
     echo "✗ EFS Write Access: FAILED"
 fi
