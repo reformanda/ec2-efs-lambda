@@ -15,14 +15,15 @@ echo "Starting EC2 initialization at $(date)"
 # Update system
 dnf update -y
 
+# Install EPEL repository directly for RHEL 9
+dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
+
 # Install required packages
 dnf install -y \
     nfs-utils \
-    aws-cli \
     python3 \
     python3-pip \
     git \
-    htop \
     tree \
     wget \
     curl \
@@ -34,7 +35,15 @@ dnf install -y \
     systemd-devel \
     openssl-devel \
     cargo \
-    rust
+    rust \
+    unzip \
+    htop
+
+# Install AWS CLI v2 manually since it's not in RHEL 9 repos
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+unzip awscliv2.zip
+./aws/install
+rm -rf aws awscliv2.zip
 
 # Build and install amazon-efs-utils from source for RHEL 9
 echo "Building amazon-efs-utils from source..."
