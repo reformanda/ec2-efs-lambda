@@ -2,16 +2,16 @@
 # Copy this file to terraform.tfvars and update the values
 
 # AWS Configuration
-aws_region = "us-east-2"
+aws_region = "us-west-1"
 
 # Project Configuration
 project_name = "my-efs-project"
 
 # Network Configuration (REQUIRED - update these with your actual values)
-vpc_id = "vpc-0097330872f8d5246"  # Your existing VPC ID
+vpc_id = "vpc-bdd5cddf"  # Your existing VPC ID
 subnet_ids = [
-  "subnet-0b922026b9c85add8",     # Your first subnet ID
-  "subnet-0f25e845dbf79a39f"      # Your second subnet ID
+  "subnet-613d1027",     # Your first subnet ID
+  "subnet-1cfe1c79"      # Your second subnet ID
 ]
 
 # EC2 Configuration
