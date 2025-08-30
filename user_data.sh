@@ -37,7 +37,8 @@ dnf install -y \
     cargo \
     rust \
     unzip \
-    htop
+    htop \
+    stunnel
 
 # Install AWS CLI v2 manually since it's not in RHEL 9 repos
 curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
