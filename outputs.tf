@@ -20,14 +20,9 @@ output "efs_file_system_dns_name" {
   value       = aws_efs_file_system.main.dns_name
 }
 
-output "efs_lambda_access_point_id" {
-  description = "ID of the EFS access point for Lambda"
-  value       = aws_efs_access_point.lambda.id
-}
-
-output "efs_ec2_access_point_id" {
-  description = "ID of the EFS access point for EC2"
-  value       = aws_efs_access_point.ec2.id
+output "efs_access_point_id" {
+  description = "ID of the EFS access point for EC2 and Lambda"
+  value       = aws_efs_access_point.main.id
 }
 
 output "lambda_function_name" {
