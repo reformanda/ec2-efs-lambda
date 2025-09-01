@@ -1,0 +1,51 @@
+# httpd-efs-docker.yml - Ansible playbook to run httpd container as www (uid 2000) with EFS mount
+- name: Deploy httpd Docker container with EFS mount as www user
+  hosts: all
+  become: yes
+  vars:
+    efs_web_dir: /mnt/efs/www
+    www_uid: 2000
+    www_user: www
+  tasks:
+    - name: Ensure www user exists with UID 2000
+      user:
+        name: "{{ www_user }}"
+        uid: "{{ www_uid }}"
+        shell: /bin/bash
+        create_home: yes
+
+    - name: Create EFS web directory
+      file:
+        path: "{{ efs_web_dir }}"
+        state: directory
+        owner: "{{ www_user }}"
+        group: "{{ www_user }}"
+        mode: '0755'
+
+    - name: Install Docker
+      dnf:
+        name: docker
+        state: present
+
+    - name: Start and enable Docker
+      systemd:
+        name: docker
+        state: started
+        enabled: yes
+
+    - name: Pull httpd image
+      community.docker.docker_image:
+        name: httpd
+        source: pull
+
+    - name: Run httpd container as www user with EFS mount
+      community.docker.docker_container:
+        name: my-httpd
+        image: httpd:latest
+        state: started
+        restart_policy: always
+        published_ports:
+          - "80:80"
+        volumes:
+          - "{{ efs_web_dir }}:/usr/local/apache2/htdocs/"
+        user: "{{ www_uid }}"

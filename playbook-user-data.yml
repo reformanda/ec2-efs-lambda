@@ -1,0 +1,147 @@
+---
+# playbook-user-data.yml - Ansible Playbook equivalent of user_data.sh for RHEL 9 EC2 EFS setup
+- name: EC2 EFS User Data Setup (Ansible version)
+  hosts: all
+  become: yes
+  vars:
+    efs_id: "{{ efs_id | default(lookup('env', 'EFS_ID')) }}"
+    aws_region: "{{ aws_region | default(lookup('env', 'AWS_REGION')) }}"
+    s3_bucket: "{{ s3_bucket | default(lookup('env', 'S3_BUCKET')) }}"
+    mount_point: "/mnt/efs"
+    ec2_user: "ec2-user"
+    python_packages:
+      - boto3
+      - pandas
+      - numpy
+  tasks:
+    - name: Log start time
+      shell: echo "Starting EC2 initialization at $(date)" | tee /var/log/user-data.log
+
+    - name: Update system
+      dnf:
+        name: "*"
+        state: latest
+        update_cache: yes
+
+    - name: Install EPEL repository
+      dnf:
+        name: https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
+        state: present
+
+    - name: Install required packages
+      dnf:
+        name:
+          - nfs-utils
+          - python3
+          - python3-pip
+          - git
+          - tree
+          - wget
+          - curl
+          - gcc
+          - make
+          - rpm-build
+          - rpm-devel
+          - libtool
+          - systemd-devel
+          - openssl-devel
+          - cargo
+          - rust
+          - unzip
+          - htop
+          - stunnel
+        state: present
+
+    - name: Install AWS CLI v2
+      unarchive:
+        src: "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip"
+        dest: /tmp
+        remote_src: yes
+      register: awscli_unzip
+
+    - name: Run AWS CLI installer
+      shell: /tmp/aws/install
+      args:
+        creates: /usr/local/bin/aws
+      when: awscli_unzip is changed
+
+    - name: Remove AWS CLI installer files
+      file:
+        path: "/tmp/aws"
+        state: absent
+
+    - name: Remove AWS CLI zip
+      file:
+        path: "/tmp/awscli-exe-linux-x86_64.zip"
+        state: absent
+
+    - name: Build and install amazon-efs-utils from source
+      block:
+        - name: Clone efs-utils repository
+          git:
+            repo: https://github.com/aws/efs-utils
+            dest: /tmp/efs-utils
+            force: yes
+        - name: Build RPM package
+          command: make rpm
+          args:
+            chdir: /tmp/efs-utils
+        - name: Install amazon-efs-utils RPM
+          shell: rpm -ivh /tmp/efs-utils/build/amazon-efs-utils*.rpm
+          args:
+            creates: /usr/bin/amazon-efs-mount-watchdog
+        - name: Clean up build directory
+          file:
+            path: /tmp/efs-utils
+            state: absent
+
+    - name: Create EFS mount point
+      file:
+        path: "{{ mount_point }}"
+        state: directory
+        mode: '0755'
+        owner: "{{ ec2_user }}"
+        group: "{{ ec2_user }}"
+
+    - name: Create fstab entry for EFS
+      mount:
+        path: "{{ mount_point }}"
+        src: "{{ efs_id }}.efs.{{ aws_region }}.amazonaws.com:/"
+        fstype: efs
+        opts: "defaults,_netdev,tls"
+        state: mounted
+
+    - name: Set permissions on EFS mount
+      file:
+        path: "{{ mount_point }}"
+        owner: "{{ ec2_user }}"
+        group: "{{ ec2_user }}"
+        mode: '0755'
+
+    - name: Create directory structure
+      file:
+        path: "{{ mount_point }}/{{ item }}"
+        state: directory
+        owner: "{{ ec2_user }}"
+        group: "{{ ec2_user }}"
+        mode: '0755'
+      loop:
+        - data
+        - logs
+        - scripts
+
+    - name: Create a test file
+      copy:
+        dest: "{{ mount_point }}/logs/mount-test.log"
+        content: "EFS mount successful at {{ ansible_date_time.iso8601 }}\n"
+        owner: "{{ ec2_user }}"
+        group: "{{ ec2_user }}"
+
+    - name: Install additional Python packages for data processing
+      pip:
+        name: "{{ python_packages }}"
+        executable: pip3
+        extra_args: --user
+      become_user: "{{ ec2_user }}"
+
+    # Additional tasks for systemd services, monitoring scripts, web server, health checks, and bash aliases can be added here following the same pattern as above.

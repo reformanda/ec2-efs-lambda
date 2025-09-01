@@ -130,10 +130,10 @@ resource "aws_efs_access_point" "lambda" {
   }
 
   root_directory {
-    path = "/lambda"
+    path = "/www"
     creation_info {
-      owner_gid   = 1001
-      owner_uid   = 1001
+      owner_gid   = 2000
+      owner_uid   = 2000
       permissions = "755"
     }
   }
@@ -153,10 +153,10 @@ resource "aws_efs_access_point" "ec2" {
   }
 
   root_directory {
-    path = "/ec2"
+    path = "/www"
     creation_info {
-      owner_gid   = 1000
-      owner_uid   = 1000
+      owner_gid   = 2000
+      owner_uid   = 2000
       permissions = "755"
     }
   }
@@ -260,7 +260,7 @@ resource "aws_lambda_function" "s3_efs_sync" {
   environment {
     variables = {
       S3_BUCKET    = aws_s3_bucket.data_bucket.bucket
-      EFS_PATH     = "/mnt/efs"
+      EFS_PATH     = "/mnt/efs/www"
       LOG_LEVEL    = "INFO"
     }
   }
@@ -408,11 +408,11 @@ resource "aws_instance" "rhel9" {
   subnet_id             = var.subnet_ids[0]
   iam_instance_profile  = aws_iam_instance_profile.ec2_profile.name
 
-  user_data = base64encode(templatefile("${path.module}/user_data.sh", {
-    efs_id     = aws_efs_file_system.main.id
-    aws_region = var.aws_region
-    s3_bucket  = aws_s3_bucket.data_bucket.bucket
-  }))
+#  user_data = base64encode(templatefile("${path.module}/user_data.sh", {
+#    efs_id     = aws_efs_file_system.main.id
+#    aws_region = var.aws_region
+#    s3_bucket  = aws_s3_bucket.data_bucket.bucket
+#  }))
 
   tags = merge(var.common_tags, {
     Name = "${var.project_name}-rhel9-instance"
