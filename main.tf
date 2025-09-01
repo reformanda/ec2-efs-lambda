@@ -120,13 +120,13 @@ resource "aws_efs_mount_target" "main" {
   security_groups = [aws_security_group.efs_sg.id]
 }
 
-# EFS Access Point for Lambda
-resource "aws_efs_access_point" "lambda" {
+# EFS Access Point for EC2 and Lambda
+resource "aws_efs_access_point" "main" {
   file_system_id = aws_efs_file_system.main.id
 
   posix_user {
-    gid = 1001
-    uid = 1001
+    gid = 2000
+    uid = 2000
   }
 
   root_directory {
@@ -139,30 +139,7 @@ resource "aws_efs_access_point" "lambda" {
   }
 
   tags = merge(var.common_tags, {
-    Name = "${var.project_name}-lambda-access-point"
-  })
-}
-
-# EFS Access Point for EC2
-resource "aws_efs_access_point" "ec2" {
-  file_system_id = aws_efs_file_system.main.id
-
-  posix_user {
-    gid = 1000
-    uid = 1000
-  }
-
-  root_directory {
-    path = "/www"
-    creation_info {
-      owner_gid   = 2000
-      owner_uid   = 2000
-      permissions = "755"
-    }
-  }
-
-  tags = merge(var.common_tags, {
-    Name = "${var.project_name}-ec2-access-point"
+    Name = "${var.project_name}-efs-access-point"
   })
 }
 
@@ -253,7 +230,7 @@ resource "aws_lambda_function" "s3_efs_sync" {
   }
 
   file_system_config {
-    arn              = aws_efs_access_point.lambda.arn
+    arn              = aws_efs_access_point.main.arn
     local_mount_path = "/mnt/efs"
   }
 
