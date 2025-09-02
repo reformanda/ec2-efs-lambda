@@ -1,10 +1,13 @@
 # httpd-efs-docker.yml - Ansible playbook to run httpd container as www (uid 2000) with EFS mount
   hosts: all
   become: yes
+
   vars:
     efs_web_dir: /mnt/efs/www
     www_uid: 2000
     www_user: www
+
+
   tasks:
     - name: Ensure www user exists with UID 2000
       user:
@@ -21,17 +24,6 @@
         group: "{{ www_user }}"
         mode: '0755'
 
-
----
-# httpd-efs-docker.yml - Ansible playbook to run httpd container as www (uid 2000) with EFS mount
-- name: Deploy httpd Docker container with EFS mount as www user
-  hosts: all
-  become: yes
-  vars:
-    efs_web_dir: /mnt/efs/www
-    www_uid: 2000
-    www_user: www
-  tasks:
     - name: Ensure www user exists with UID 2000
       user:
         name: "{{ www_user }}"
@@ -64,12 +56,6 @@
     - name: Reload systemd daemon for Docker
       systemd:
         daemon_reload: yes
-
-    - name: Start and enable Docker
-      systemd:
-        name: docker
-        state: started
-        enabled: yes
 
     - name: Start and enable Docker
       systemd:
