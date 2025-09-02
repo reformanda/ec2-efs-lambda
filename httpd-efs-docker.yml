@@ -1,4 +1,5 @@
 
+
 ---
 - name: httpd-efs-docker.yml 
 #- Ansible playbook to run httpd container as www (uid 2000) with EFS mount
@@ -61,6 +62,12 @@
     - name: Install docker-py
       pip:
         name: docker-py
+
+    - name: Install requests version 2.3 for Python
+      pip:
+        name: requests==2.31.0
+        executable: pip3
+
 
     - name: Reload systemd daemon for Docker
       systemd:
