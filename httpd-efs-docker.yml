@@ -58,11 +58,9 @@
         state: present
         allowerasing: yes
 
-    - name: Install Docker Python SDK
+    - name: Install docker-py
       pip:
-        name: docker
-        executable: pip3
-      delegate_to: "{{ inventory_hostname }}"
+        name: docker-py
 
     - name: Reload systemd daemon for Docker
       systemd:
@@ -78,8 +76,7 @@
       community.docker.docker_image:
         name: httpd
         source: pull
-      delegate_to: "{{ inventory_hostname }}"
-      
+
     - name: Run httpd container as www user with EFS mount
       community.docker.docker_container:
         name: my-httpd
