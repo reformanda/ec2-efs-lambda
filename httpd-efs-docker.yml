@@ -1,7 +1,3 @@
-    - name: Install Docker Python SDK
-      pip:
-        name: docker
-        executable: pip3
 
 ---
 - name: httpd-efs-docker.yml 
@@ -61,6 +57,11 @@
           - containerd.io
         state: present
         allowerasing: yes
+
+    - name: Install Docker Python SDK
+      pip:
+        name: docker
+        executable: pip3
 
     - name: Reload systemd daemon for Docker
       systemd:
