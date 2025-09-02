@@ -81,7 +81,13 @@
         path: "/tmp/awscli-exe-linux-x86_64.zip"
         state: absent
 
-    - name: Build and install amazon-efs-utils from source
+    - name: Check if amazon-efs-utils is already installed
+      command: rpm -q amazon-efs-utils
+      register: efs_utils_installed
+      failed_when: false
+      changed_when: false
+
+    - name: Build and install amazon-efs-utils from source if not installed
       block:
         - name: Clone efs-utils repository
           git:
@@ -100,6 +106,7 @@
           file:
             path: /tmp/efs-utils
             state: absent
+      when: efs_utils_installed.rc != 0
 
     - name: Create EFS mount point
       file:
