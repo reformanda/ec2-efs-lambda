@@ -84,6 +84,20 @@
         groups: docker
         append: yes      
 
+
+    - name: Ensure default index.html exists in EFS web directory
+      copy:
+        dest: "{{ efs_web_dir }}/index.html"
+        content: |
+          <html>
+          <head><title>Welcome</title></head>
+          <body><h1>It works!</h1></body>
+          </html>
+        owner: "{{ www_user }}"
+        group: "{{ www_user }}"
+        mode: '0644'
+        force: no
+
     - name: Copy Dockerfile to target
       copy:
         src: ./docker-httpd/Dockerfile
@@ -96,10 +110,11 @@
         dest: /home/{{ ansible_user | default('ec2-user') }}/docker-compose.yml
         mode: '0644'
 
-    - name: Run docker compose up
+
+    - name: Run docker compose up (force rebuild)
       shell: |
         cd /home/{{ ansible_user | default('ec2-user') }}
-        docker compose up -d
+        docker compose up -d --build
       args:
         executable: /bin/bash
       environment:
