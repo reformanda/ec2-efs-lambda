@@ -123,24 +123,22 @@
         state: mounted
 
 
+
     - name: Create directory structure
       file:
         path: "{{ mount_point }}/{{ item }}"
         state: directory
-        owner: "{{ ec2_user }}"
-        group: "{{ ec2_user }}"
         mode: '0755'
       loop:
         - data
         - logs
         - scripts
 
+
     - name: Create a test file
       copy:
         dest: "{{ mount_point }}/logs/mount-test.log"
         content: "EFS mount successful at {{ ansible_date_time.iso8601 }}\n"
-        owner: "{{ ec2_user }}"
-        group: "{{ ec2_user }}"
 
     - name: Install additional Python packages for data processing
       pip:
