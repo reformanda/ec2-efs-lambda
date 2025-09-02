@@ -117,12 +117,6 @@
         opts: "defaults,_netdev,tls,accesspoint={{ efs_access_point_id }}"
         state: mounted
 
-    - name: Set permissions on EFS mount
-      file:
-        path: "{{ mount_point }}"
-        owner: "{{ ec2_user }}"
-        group: "{{ ec2_user }}"
-        mode: '0755'
 
     - name: Create directory structure
       file:
