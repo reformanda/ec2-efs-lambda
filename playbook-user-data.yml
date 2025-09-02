@@ -4,9 +4,10 @@
   hosts: all
   become: yes
   vars:
-    efs_id: "{{ efs_id | default(lookup('env', 'EFS_ID')) }}"
-    aws_region: "{{ aws_region | default(lookup('env', 'AWS_REGION')) }}"
-    s3_bucket: "{{ s3_bucket | default(lookup('env', 'S3_BUCKET')) }}"
+    efs_id: "{{ efs_id | default(lookup('env', 'EFS_ID'), true) }}"
+    efs_access_point_id: "{{ efs_access_point_id | default(lookup('env', 'EFS_ACCESS_POINT_ID'), true) }}"
+    aws_region: "{{ aws_region | default(lookup('env', 'AWS_REGION'), true) }}"
+    s3_bucket: "{{ s3_bucket | default(lookup('env', 'S3_BUCKET'), true) }}"
     mount_point: "/mnt/efs"
     ec2_user: "ec2-user"
     python_packages:
@@ -108,12 +109,12 @@
         owner: "{{ ec2_user }}"
         group: "{{ ec2_user }}"
 
-    - name: Create fstab entry for EFS
+    - name: Create fstab entry for EFS with access point
       mount:
         path: "{{ mount_point }}"
         src: "{{ efs_id }}.efs.{{ aws_region }}.amazonaws.com:/"
         fstype: efs
-        opts: "defaults,_netdev,tls"
+        opts: "defaults,_netdev,tls,accesspoint={{ efs_access_point_id }}"
         state: mounted
 
     - name: Set permissions on EFS mount
