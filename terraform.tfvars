@@ -14,6 +14,8 @@ subnet_ids = [
   "subnet-1cfe1c79"      # Your second subnet ID
 ]
 
+route_table_ids = ["rtb-c2a4bfa0]
+
 # EC2 Configuration
 key_pair_name = "rhel9-us-west-1"     # Your existing EC2 Key Pair name
 instance_type = "t3.medium"       # EC2 instance type

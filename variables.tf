@@ -1,3 +1,7 @@
+variable "route_table_ids" {
+  description = "List of route table IDs for the VPC S3 endpoint. Should include all route tables for subnets that need S3 access."
+  type        = list(string)
+}
 # variables.tf - Variable definitions
 
 variable "aws_region" {
