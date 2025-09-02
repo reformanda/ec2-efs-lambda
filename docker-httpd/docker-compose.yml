@@ -1,0 +1,14 @@
+version: '3.8'
+services:
+  httpd:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: custom-httpd-efs
+    container_name: my-httpd
+    ports:
+      - "80:80"
+    volumes:
+      - /mnt/efs/www:/usr/local/apache2/htdocs:rw
+    user: "2000:2000"
+    restart: always

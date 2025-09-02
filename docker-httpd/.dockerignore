@@ -1,0 +1,3 @@
+# Ignore everything except Dockerfile and README
+!Dockerfile
+!README.md

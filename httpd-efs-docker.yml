@@ -1,5 +1,4 @@
 
-
 ---
 - name: httpd-efs-docker.yml 
 #- Ansible playbook to run httpd container as www (uid 2000) with EFS mount
@@ -85,19 +84,25 @@
         groups: docker
         append: yes      
 
-    - name: Pull httpd image
-      community.docker.docker_image:
-        name: httpd
-        source: pull
+    - name: Copy Dockerfile to target
+      copy:
+        src: ../docker-httpd/Dockerfile
+        dest: /home/{{ ansible_user | default('ec2-user') }}/Dockerfile
+        mode: '0644'
 
-    - name: Run httpd container as www user with EFS mount
-      community.docker.docker_container:
-        name: my-httpd
-        image: httpd:latest
-        state: started
-        restart_policy: always
-        published_ports:
-          - "80:80"
-        volumes:
-          - "{{ efs_web_dir }}:/usr/local/apache2/htdocs/"
-        user: "{{ www_uid }}"
+    - name: Copy docker-compose.yml to target
+      copy:
+        src: ../docker-httpd/docker-compose.yml
+        dest: /home/{{ ansible_user | default('ec2-user') }}/docker-compose.yml
+        mode: '0644'
+
+    - name: Run docker compose up
+      shell: |
+        cd /home/{{ ansible_user | default('ec2-user') }}
+        docker compose up -d
+      args:
+        executable: /bin/bash
+      environment:
+        DOCKER_HOST: unix:///var/run/docker.sock
+      become: yes
+
