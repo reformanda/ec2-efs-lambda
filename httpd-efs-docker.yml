@@ -1,3 +1,8 @@
+    - name: Install Docker Python SDK
+      pip:
+        name: docker
+        executable: pip3
+
 ---
 - name: httpd-efs-docker.yml 
 #- Ansible playbook to run httpd container as www (uid 2000) with EFS mount
@@ -10,6 +15,8 @@
     www_user: www
 
 
+  environment:
+    DOCKER_HOST: unix:///var/run/docker.sock
   tasks:
     - name: Ensure www user exists with UID 2000
       user:
