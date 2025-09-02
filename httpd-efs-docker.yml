@@ -86,13 +86,13 @@
 
     - name: Copy Dockerfile to target
       copy:
-        src: ../docker-httpd/Dockerfile
+        src: ./docker-httpd/Dockerfile
         dest: /home/{{ ansible_user | default('ec2-user') }}/Dockerfile
         mode: '0644'
 
     - name: Copy docker-compose.yml to target
       copy:
-        src: ../docker-httpd/docker-compose.yml
+        src: ./docker-httpd/docker-compose.yml
         dest: /home/{{ ansible_user | default('ec2-user') }}/docker-compose.yml
         mode: '0644'
 
