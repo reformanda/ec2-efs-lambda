@@ -106,8 +106,6 @@
         path: "{{ mount_point }}"
         state: directory
         mode: '0755'
-        owner: "{{ ec2_user }}"
-        group: "{{ ec2_user }}"
 
     - name: Create fstab entry for EFS with access point
       mount:
