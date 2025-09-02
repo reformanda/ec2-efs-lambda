@@ -1,3 +1,27 @@
+  tasks:
+    - name: Add Docker CE repo
+      get_url:
+        url: https://download.docker.com/linux/centos/docker-ce.repo
+        dest: /etc/yum.repos.d/docker-ce.repo
+
+    - name: Install Docker CE and dependencies
+      dnf:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+        state: present
+        allowerasing: yes
+
+    - name: Reload systemd daemon for Docker
+      systemd:
+        daemon_reload: yes
+
+    - name: Start and enable Docker
+      systemd:
+        name: docker
+        state: started
+        enabled: yes
 # httpd-efs-docker.yml - Ansible playbook to run httpd container as www (uid 2000) with EFS mount
 - name: Deploy httpd Docker container with EFS mount as www user
   hosts: all
