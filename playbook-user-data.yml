@@ -124,27 +124,27 @@
 
 
 
-    - name: Create directory structure
-      file:
-        path: "{{ mount_point }}/{{ item }}"
-        state: directory
-        mode: '0755'
-      loop:
-        - data
-        - logs
-        - scripts
+    # - name: Create directory structure
+    #   file:
+    #     path: "{{ mount_point }}/{{ item }}"
+    #     state: directory
+    #     mode: '0755'
+    #   loop:
+    #     - data
+    #     - logs
+    #     - scripts
 
 
-    - name: Create a test file
-      copy:
-        dest: "{{ mount_point }}/logs/mount-test.log"
-        content: "EFS mount successful at {{ ansible_date_time.iso8601 }}\n"
+    # - name: Create a test file
+    #   copy:
+    #     dest: "{{ mount_point }}/logs/mount-test.log"
+    #     content: "EFS mount successful at {{ ansible_date_time.iso8601 }}\n"
 
-    - name: Install additional Python packages for data processing
-      pip:
-        name: "{{ python_packages }}"
-        executable: pip3
-        extra_args: --user
-      become_user: "{{ ec2_user }}"
+    # - name: Install additional Python packages for data processing
+    #   pip:
+    #     name: "{{ python_packages }}"
+    #     executable: pip3
+    #     extra_args: --user
+    #   become_user: "{{ ec2_user }}"
 
     # Additional tasks for systemd services, monitoring scripts, web server, health checks, and bash aliases can be added here following the same pattern as above.
