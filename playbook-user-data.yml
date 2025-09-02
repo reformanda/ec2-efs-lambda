@@ -23,6 +23,11 @@
         state: latest
         update_cache: yes
 
+    - name: Import EPEL GPG key
+      rpm_key:
+        state: present
+        key: https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-9
+
     - name: Install EPEL repository
       dnf:
         name: https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
