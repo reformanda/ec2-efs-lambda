@@ -40,59 +40,55 @@ def lambda_handler(event, context):
                 })
             }
         
+
         synced_files = []
         errors = []
-        
+
         for obj in response['Contents']:
             key = obj['Key']
             local_path = os.path.join(efs_path, key)
-            
+
             try:
                 # Create directory structure if needed
                 local_dir = os.path.dirname(local_path)
                 if local_dir:
                     Path(local_dir).mkdir(parents=True, exist_ok=True)
-                
+
                 # Check if file exists and compare modification times
                 should_download = True
                 if os.path.exists(local_path):
                     local_mtime = datetime.fromtimestamp(os.path.getmtime(local_path))
                     s3_mtime = obj['LastModified'].replace(tzinfo=None)
-                    
+
                     if local_mtime >= s3_mtime:
                         should_download = False
                         logger.debug(f"Skipping {key} - local file is up to date")
-                
+
                 if should_download:
                     logger.info(f"Downloading {key} to {local_path}")
                     s3_client.download_file(bucket_name, key, local_path)
                     synced_files.append(key)
-                    
+
             except Exception as e:
                 error_msg = f"Error syncing {key}: {str(e)}"
                 logger.error(error_msg)
                 errors.append(error_msg)
-        
-        # Also sync from EFS to S3 (upload new/modified files)
-        uploaded_files = sync_efs_to_s3(bucket_name, efs_path)
-        
+
         result = {
             'statusCode': 200,
             'body': json.dumps({
                 'message': 'Sync completed',
                 'downloaded_files': len(synced_files),
-                'uploaded_files': len(uploaded_files),
                 'errors': len(errors),
                 'timestamp': datetime.utcnow().isoformat(),
                 'details': {
                     'downloaded': synced_files,
-                    'uploaded': uploaded_files,
                     'errors': errors
                 }
             })
         }
-        
-        logger.info(f"Sync completed. Downloaded: {len(synced_files)}, Uploaded: {len(uploaded_files)}, Errors: {len(errors)}")
+
+        logger.info(f"Sync completed. Downloaded: {len(synced_files)}, Errors: {len(errors)}")
         return result
         
     except Exception as e:
